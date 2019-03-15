@@ -111,6 +111,17 @@ class StateSpec(object):
         self.resource = resource
 
 
+class RealizeSpec(object):
+    def __init__(self, type, oc_map, cluster, namespace,
+                 resource_type, resource):
+        self.type = type
+        self.oc_map = oc_map
+        self.cluster = cluster
+        self.namespace = namespace
+        self.resource_type = resource_type
+        self.resource = resource
+
+
 def obtain_oc_client(oc_map, cluster_info):
     cluster = cluster_info['name']
     if oc_map.get(cluster) is None:
@@ -393,7 +404,26 @@ def delete(dry_run, oc_map, cluster, namespace, resource_type, name):
         oc_map[cluster].delete(namespace, resource_type, name)
 
 
-def realize_data(dry_run, oc_map, ri):
+def realize(spec, dry_run, ri):
+    global _log_lock
+
+    try:
+        if spec.type == "apply":
+            apply(dry_run, spec.oc_map, spec.cluster, spec.namespace,
+                  spec.resource_type, spec.resource)
+        if spec.type == "delete":
+            delete(dry_run, spec.oc_map, spec.cluster, spec.namespace,
+                   spec.resource_type, spec.resource)
+    except StatusCodeError as e:
+        ri.register_error()
+        msg = "[{}/{}] {}".format(spec.cluster, spec.namespace, e.message)
+        _log_lock.acquire()
+        logging.error(msg)
+        _log_lock.release()
+
+
+def init_specs_to_realize(oc_map, ri):
+    realize_specs = []
     for cluster, namespace, resource_type, data in ri:
         # desired items
         for name, d_item in data['desired'].items():
@@ -426,13 +456,9 @@ def realize_data(dry_run, oc_map, ri):
             else:
                 logging.debug("CURRENT: None")
 
-            try:
-                apply(dry_run, oc_map, cluster, namespace,
-                      resource_type, d_item)
-            except StatusCodeError as e:
-                ri.register_error()
-                msg = "[{}/{}] {}".format(cluster, namespace, e.message)
-                logging.error(msg)
+            a_spec = RealizeSpec("apply", oc_map, cluster, namespace,
+                                 resource_type, d_item)
+            realize_specs.append(a_spec)
 
         # current items
         for name, c_item in data['current'].items():
@@ -443,13 +469,20 @@ def realize_data(dry_run, oc_map, ri):
             if not c_item.has_qontract_annotations():
                 continue
 
-            try:
-                delete(dry_run, oc_map, cluster, namespace,
-                       resource_type, name)
-            except StatusCodeError as e:
-                ri.register_error()
-                msg = "[{}/{}] {}".format(cluster, namespace, e.message)
-                logging.error(msg)
+            d_spec = RealizeSpec("delete", oc_map, cluster, namespace,
+                                 resource_type, name)
+            realize_specs.append(d_spec)
+
+    return realize_specs
+
+
+def realize_data(dry_run, oc_map, ri, thread_pool_size):
+    realize_specs = init_specs_to_realize(oc_map, ri)
+
+    pool = ThreadPool(thread_pool_size)
+
+    realize_partial = partial(realize, dry_run=dry_run, ri=ri)
+    pool.map(realize_partial, realize_specs)
 
 
 def run(dry_run=False, thread_pool_size=10):
@@ -458,7 +491,7 @@ def run(dry_run=False, thread_pool_size=10):
     namespaces_query = gqlapi.query(NAMESPACES_QUERY)['namespaces']
 
     oc_map, ri = fetch_data(namespaces_query, thread_pool_size)
-    realize_data(dry_run, oc_map, ri)
+    realize_data(dry_run, oc_map, ri, thread_pool_size)
 
     if ri.has_error_registered():
         sys.exit(1)
