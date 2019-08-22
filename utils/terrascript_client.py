@@ -528,7 +528,7 @@ class TerrascriptClient(object):
         self.init_common_outputs(tf_resources, namespace_info,
                                  output_prefix, output_resource_name)
 
-        # iam user for bucket
+        # iam user
         values = {}
         values['name'] = identifier
         values['tags'] = common_values['tags']
