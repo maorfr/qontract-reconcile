@@ -6,6 +6,7 @@ import reconcile.queries as queries
 import utils.throughput as throughput
 
 from utils.gitlab_api import GitLabApi
+from utils.saasherder import SaasHerder
 
 
 QONTRACT_INTEGRATION = 'owner-approvals'
@@ -52,8 +53,8 @@ def collect_state():
         for resource_template in resource_templates:
             resource_template_name = resource_template['name']
             for target in resource_template['targets']:
-                namespace = target['namespace']['name']
-                cluster = target['namespace']['cluster']['name']
+                cluster, namespace, _, _ = \
+                    SaasHerder.get_target_details(target)
                 target_ref = target['ref']
                 state.append({
                     'saas_file_path': saas_file_path,

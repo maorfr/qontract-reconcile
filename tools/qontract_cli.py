@@ -12,6 +12,7 @@ import reconcile.openshift_resources as ocr
 from tabulate import tabulate
 
 from utils.state import State
+from utils.saasherder import SaasHerder
 from utils.environ import environ
 from reconcile.cli import config_file
 
@@ -470,9 +471,9 @@ def saas_dev(ctx, app_name=None, saas_file_name=None, env_name=None):
             for target in rt['targets']:
                 target_parameters = \
                     json.loads(target.get('parameters') or '{}')
-                namespace = target['namespace']
-                namespace_name = namespace['name']
-                environment = namespace['environment']
+                _, namespace_name, _, _ = \
+                    SaasHerder.get_target_details(target)
+                environment = SaasHerder.get_environment(target)
                 if environment['name'] != env_name:
                     continue
                 ref = target['ref']

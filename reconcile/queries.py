@@ -1,5 +1,7 @@
 import utils.gql as gql
 
+from utils.saasherder import SaasHerder
+
 
 APP_INTERFACE_SETTINGS_QUERY = """
 {
@@ -804,6 +806,37 @@ SAAS_FILES_QUERY = """
             }
           }
         }
+        cluster {
+          name
+          serverUrl
+          jumpHost {
+              hostname
+              knownHosts
+              user
+              port
+              identity {
+                  path
+                  field
+                  format
+              }
+          }
+          automationToken {
+            path
+            field
+            format
+          }
+          internal
+          disable {
+            integrations
+          }
+        }
+        environment {
+          name
+          parameters
+        }
+        app {
+          name
+        }
         ref
         parameters
         upstream
@@ -839,8 +872,7 @@ def get_saas_files(saas_file_name=None, env_name=None, app_name=None):
             for rt in resource_templates[:]:
                 targets = rt['targets']
                 for target in targets[:]:
-                    namespace = target['namespace']
-                    environment = namespace['environment']
+                    environment = SaasHerder.get_environment(target)
                     if environment['name'] != env_name:
                         targets.remove(target)
                 if not targets:

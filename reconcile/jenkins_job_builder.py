@@ -7,6 +7,7 @@ import reconcile.queries as queries
 
 from utils.defer import defer
 from utils.jjb_client import JJB
+from utils.saasherder import SaasHerder
 
 
 QUERY = """
@@ -53,13 +54,12 @@ def collect_saas_file_configs():
         slack_channel = saas_file['slack']['channel']
         for resource_template in saas_file['resourceTemplates']:
             for target in resource_template['targets']:
-                namespace = target['namespace']
-                env_name = namespace['environment']['name']
+                _, _, env_name, app_name = \
+                    SaasHerder.get_target_details(target)
                 upstream = target.get('upstream', '')
                 job_template_name = settings['saasDeployJobTemplate']
                 if upstream:
                     job_template_name += '-with-upstream'
-                app_name = namespace['app']['name']
                 jc_name = get_openshift_saas_deploy_job_name(
                     saas_file_name, env_name, settings)
                 existing_configs = \

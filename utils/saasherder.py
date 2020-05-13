@@ -74,7 +74,22 @@ class SaasHerder():
             for rt in resource_templates:
                 targets = rt['targets']
                 for target in targets:
-                    namespace = target['namespace']
+                    # namespace scoped resources
+                    namespace = target.get('namespace')
+                    cluster = target.get('cluster')
+                    if namespace and cluster:
+                        raise KeyError(
+                            'expected only one of namespace or cluster')
+                    if cluster:
+                        # cluster scoped resources
+                        environment = target['environment']
+                        app = target['app']
+                        namespace = {
+                            'name': 'cluster-scope',
+                            'environment': environment,
+                            'app': app,
+                            'cluster': cluster,
+                        }
                     # managedResourceTypes is defined per saas_file
                     # add it to each namespace in the current saas_file
                     namespace['managedResourceTypes'] = managed_resource_types
@@ -146,10 +161,38 @@ class SaasHerder():
         return commit_sha
 
     @staticmethod
-    def _get_cluster_and_namespace(target):
-        cluster = target['namespace']['cluster']['name']
-        namespace = target['namespace']['name']
-        return cluster, namespace
+    def get_target_details(target):
+        namespace = target.get('namespace')
+        cluster = target.get('cluster')
+        if namespace and cluster:
+            raise KeyError('expected only one of namespace or cluster')
+        if namespace:
+            namespace_info = target['namespace']
+            cluster_name = namespace_info['cluster']['name']
+            namespace_name = namespace_info['name']
+            environment_name = namespace_info['environment']['name']
+            app_name = namespace_info['app']['name']
+        if cluster:
+            namespace_name = 'cluster-scope'
+            cluster_name = target['cluster']['name']
+            environment_name = target['environment']['name']
+            app_name = target['app']['name']
+
+        return cluster_name, namespace_name, environment_name, app_name
+
+    @staticmethod
+    def get_environment(target):
+        amespace = target.get('namespace')
+        cluster = target.get('cluster')
+        if namespace and cluster:
+            raise KeyError('expected only one of namespace or cluster')
+        if namespace:
+            namespace_info = target['namespace']
+            environment = namespace_info['environment']
+        if cluster:
+            environment = target['environment']
+
+        return environment
 
     def _process_template(self, options):
         saas_file_name = options['saas_file_name']
@@ -161,7 +204,7 @@ class SaasHerder():
         parameters = options['parameters']
         github = options['github']
         target_ref = target['ref']
-        environment = target['namespace']['environment']
+        environment = self.get_environment(target)
         environment_parameters = self._collect_parameters(environment)
         target_parameters = self._collect_parameters(target)
 
@@ -328,8 +371,8 @@ class SaasHerder():
 
             # iterate over targets (each target is a namespace)
             for target in rt['targets']:
-                cluster, namespace = \
-                    self._get_cluster_and_namespace(target)
+                cluster, namespace, _, _ = \
+                    self.get_target_details(target)
                 process_template_options = {
                     'saas_file_name': saas_file_name,
                     'resource_template_name': rt_name,
@@ -408,10 +451,8 @@ class SaasHerder():
                 # don't trigger on refs which are commit shas
                 if ref == desired_commit_sha:
                     continue
-                namespace = target['namespace']
-                cluster_name = namespace['cluster']['name']
-                namespace_name = namespace['name']
-                env_name = namespace['environment']['name']
+                cluster_name, namespace_name, env_name, _ = \
+                    self.get_target_details(target)
                 key = f"{saas_file_name}/{rt_name}/{cluster_name}/" + \
                     f"{namespace_name}/{env_name}/{ref}"
                 current_commit_sha = self.state.get(key, None)
@@ -469,10 +510,8 @@ class SaasHerder():
             rt_name = rt['name']
             rt_parameters = rt.get('parameters')
             for desired_target_config in rt['targets']:
-                namespace = desired_target_config['namespace']
-                cluster_name = namespace['cluster']['name']
-                namespace_name = namespace['name']
-                env_name = namespace['environment']['name']
+                cluster_name, namespace_name, env_name, _ = \
+                    self.get_target_details(desired_target_config)
                 # add parent parameters to target config
                 desired_target_config['saas_file_parameters'] = \
                     saas_file_parameters
