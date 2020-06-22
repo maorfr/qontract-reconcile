@@ -30,3 +30,6 @@ base_dn = "ou=users,dc=example,dc=com"
 secret_path = 'secrets/path/to/smtp/creds'
 # (mandatory) mail address to send mails to
 mail_address = 'example.com'
+
+# test aws secrets
+export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
