@@ -160,10 +160,18 @@ class _VaultClient:
         secret_field = secret['field']
         secret_format = secret.get('format', 'plain')
         secret_version = secret.get('version')
-        try:
+
+        kv_version = self._get_mount_version_by_secret_path(secret_path)
+
+        data = None
+        if kv_version == 2:
             data = self._read_v2(secret_path, secret_field, secret_version)
-        except Exception:
+        else:
             data = self._read_v1(secret_path, secret_field)
+
+        if data is None:
+            raise SecretNotFound
+            
         return base64.b64decode(data) if secret_format == 'base64' else data
 
     def _read_v2(self, path, field, version):
