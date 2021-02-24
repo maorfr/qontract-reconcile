@@ -85,6 +85,9 @@ class _VaultClient:
             data = self._read_all_v1(secret_path)
 
         if data is None:
+            authenticated = self._client.is_authenticated()
+            if not authenticated:
+                self._client_auth()
             raise SecretNotFound
 
         return data
@@ -166,6 +169,9 @@ class _VaultClient:
             data = self._read_v1(secret_path, secret_field)
 
         if data is None:
+            authenticated = self._client.is_authenticated()
+            if not authenticated:
+                self._client_auth()
             raise SecretNotFound
             
         return base64.b64decode(data) if secret_format == 'base64' else data
