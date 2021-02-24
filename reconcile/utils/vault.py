@@ -42,9 +42,9 @@ class _VaultClient:
     def __init__(self):
         config = get_config()
 
-        server = config['vault']['server']
-        role_id = config['vault']['role_id']
-        secret_id = config['vault']['secret_id']
+        self.server = config['vault']['server']
+        self.role_id = config['vault']['role_id']
+        self.secret_id = config['vault']['secret_id']
 
         # This is a threaded world. Let's define a big
         # connections pool to live in that world
@@ -54,19 +54,15 @@ class _VaultClient:
         adapter = HTTPAdapter(pool_connections=100,
                               pool_maxsize=100)
         session.mount('https://', adapter)
-        self._client = hvac.Client(url=server, session=session)
-
-        authenticated = False
-        for i in range(0, 3):
-            try:
-                self._client.auth_approle(role_id, secret_id)
-                authenticated = self._client.is_authenticated()
-                break
-            except requests.exceptions.ConnectionError:
-                time.sleep(1)
-
+        self._client = hvac.Client(url=self.server, session=session)
+        self._client_auth()
+        authenticated = self._client.is_authenticated()
         if not authenticated:
             raise VaultConnectionError()
+
+    @retry(exceptions=requests.exceptions.ConnectionError)
+    def _client_auth(self):
+        self._client.auth_approle(self.role_id, self.secret_id)
 
     @retry()
     def read_all(self, secret):
