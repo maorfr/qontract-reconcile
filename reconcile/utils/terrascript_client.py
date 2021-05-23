@@ -1545,6 +1545,10 @@ class TerrascriptClient:
         output_name_0_13 = output_prefix + '__db_endpoint'
         output_value = '${' + tf_resource.primary_endpoint_address + '}'
         tf_resources.append(Output(output_name_0_13, value=output_value))
+        # db.reader_endpoint
+        output_name_0_13 = output_prefix + '__db_reader_endpoint'
+        output_value = '${' + tf_resource.reader_endpoint_address + '}'
+        tf_resources.append(Output(output_name_0_13, value=output_value))
         # db.port
         output_name_0_13 = output_prefix + '__db_port'
         output_value = '${' + str(tf_resource.port) + '}'
