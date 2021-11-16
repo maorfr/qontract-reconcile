@@ -431,6 +431,7 @@ CLUSTERS_QUERY = """
             cidr_block
             region
           }
+          assumeRole
         }
         ... on ClusterPeeringConnectionAccountVPCMesh_v1 {
           account {
