@@ -1,6 +1,7 @@
 import logging
 import sys
 import json
+from typing import Optional, Any, Tuple, Iterable
 
 from reconcile import queries
 from reconcile.utils import aws_api
@@ -16,6 +17,9 @@ from reconcile.utils.semver_helper import make_semver
 
 QONTRACT_INTEGRATION = 'terraform_vpc_peerings'
 QONTRACT_INTEGRATION_VERSION = make_semver(0, 1, 0)
+
+DesiredState = list[dict[str, Any]]
+DesiredStateWithError = Tuple[DesiredState, bool]
 
 
 class BadTerraformPeeringState(Exception):
@@ -69,7 +73,7 @@ def aws_account_from_infrastructure_access(cluster, access_level: str,
 
 
 def build_desired_state_single_cluster(cluster_info, ocm_map: OCMMap,
-                                       awsapi: AWSApi):
+                                       awsapi: AWSApi) -> DesiredState:
     cluster_name = cluster_info['name']
 
     peerings = []
@@ -171,12 +175,13 @@ def build_desired_state_single_cluster(cluster_info, ocm_map: OCMMap,
     return peerings
 
 
-def build_desired_state_all_clusters(clusters, ocm_map: OCMMap,
-                                     awsapi: AWSApi):
+def build_desired_state_all_clusters(
+        clusters: Iterable, ocm_map: OCMMap, awsapi: AWSApi
+) -> DesiredStateWithError:
     """
     Fetch state for VPC peerings between two OCM clusters
     """
-    desired_state = []
+    desired_state: DesiredState = []
     error = False
     if not ocm_map:
         logging.warning('cluster-vpc is not yet supported without OCM')
@@ -197,8 +202,9 @@ def build_desired_state_all_clusters(clusters, ocm_map: OCMMap,
     return desired_state, error
 
 
-def build_desired_state_vpc_mesh_single_cluster(cluster_info, ocm: OCM,
-                                                awsapi: AWSApi):
+def build_desired_state_vpc_mesh_single_cluster(
+        cluster_info, ocm: OCM, awsapi: AWSApi
+) -> DesiredState:
     desired_state = []
 
     cluster = cluster_info['name']
@@ -272,11 +278,13 @@ def build_desired_state_vpc_mesh_single_cluster(cluster_info, ocm: OCM,
     return desired_state
 
 
-def build_desired_state_vpc_mesh(clusters, ocm_map: OCMMap, awsapi: AWSApi):
+def build_desired_state_vpc_mesh(
+        clusters: Iterable, ocm_map: OCMMap, awsapi: AWSApi
+) -> DesiredStateWithError:
     """
     Fetch state for VPC peerings between a cluster and all VPCs in an account
     """
-    desired_state = []
+    desired_state: DesiredState = []
     error = False
     if not ocm_map:
         logging.warning('account-vpc-mesh is not yet supported without OCM')
@@ -300,7 +308,7 @@ def build_desired_state_vpc_mesh(clusters, ocm_map: OCMMap, awsapi: AWSApi):
 
 
 def build_desired_state_vpc_single_cluster(cluster_info, ocm: OCM,
-                                           awsapi: AWSApi):
+                                           awsapi: AWSApi) -> DesiredState:
     desired_state = []
 
     peering_info = cluster_info['peering']
@@ -368,7 +376,9 @@ def build_desired_state_vpc_single_cluster(cluster_info, ocm: OCM,
     return desired_state
 
 
-def build_desired_state_vpc(clusters, ocm_map: OCMMap, awsapi: AWSApi):
+def build_desired_state_vpc(
+        clusters: Iterable, ocm_map: OCMMap, awsapi: AWSApi
+) -> DesiredStateWithError:
     """
     Fetch state for VPC peerings between a cluster and a VPC (account)
     """
@@ -391,20 +401,27 @@ def build_desired_state_vpc(clusters, ocm_map: OCMMap, awsapi: AWSApi):
 
 
 @defer
-def run(dry_run, print_only=False,
-        enable_deletion=False, thread_pool_size=10, defer=None):
+def run(dry_run: bool,
+        print_only: bool = False,
+        enable_deletion: bool = False,
+        thread_pool_size: int = 10,
+        defer: Optional[Any] = None) -> None:
     settings = queries.get_app_interface_settings()
     clusters = [c for c in queries.get_clusters()
                 if c.get('peering') is not None]
     with_ocm = any(c.get('ocm') for c in clusters)
     if with_ocm:
-        ocm_map = ocm.OCMMap(clusters=clusters, integration=QONTRACT_INTEGRATION,
-                             settings=settings)
+        ocm_map = ocm.OCMMap(
+            clusters=clusters,
+            integration=QONTRACT_INTEGRATION,
+            settings=settings
+        )
     else:
         # this is a case for an OCP cluster which is not provisioned
         # through OCM. it is expected that an 'assume_role' is provided
         # on the vpc peering defition in the cluster file.
-        ocm_map = {}
+        ocm_map = ocm.OCMMap(clusters=[], integration=QONTRACT_INTEGRATION,
+                             settings=settings)
 
     accounts = queries.get_aws_accounts()
     awsapi = aws_api.AWSApi(1, accounts, settings=settings, init_users=False)
@@ -469,7 +486,8 @@ def run(dry_run, print_only=False,
     if tf is None or any(errors):
         sys.exit(1)
 
-    defer(tf.cleanup)
+    # Go home, mypy: you're drunk
+    defer(tf.cleanup)  # type: ignore
 
     disabled_deletions_detected, err = tf.plan(enable_deletion)
     errors.append(err)
