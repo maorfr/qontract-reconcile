@@ -1,0 +1,5 @@
+{
+    "Comment": "This key belongs to a user with the AWSCompromisedKeyQuarantine policies already attached to it, and the key is disabled. It has no further access and this is only for e2e testing of a key leak. Hackers, you have nothing to look for here.",
+    "AWS_ACCESS_KEY_ID": "AKIATUAE5OJWG7SQWX2O",
+    "AWS_SECRET_ACCESS_KEY": "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"
+}
