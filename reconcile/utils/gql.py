@@ -6,6 +6,7 @@ import textwrap
 from typing import Set, Any
 
 from urllib.parse import urlparse
+from requests import exceptions as rqexc
 
 import requests
 
@@ -181,7 +182,7 @@ def init(url, token=None, integration=None, validate_schemas=False):
     return _gqlapi
 
 
-@retry(exceptions=requests.exceptions.HTTPError, max_attempts=5)
+@retry(exceptions=(rqexc.HTTPError), max_attempts=5)
 def get_sha(server, token=None):
     sha_endpoint = server._replace(path='/sha256')
     headers = {'Authorization': token} if token else None
@@ -191,7 +192,7 @@ def get_sha(server, token=None):
     return sha
 
 
-@retry(exceptions=requests.exceptions.HTTPError, max_attempts=5)
+@retry(exceptions=rqexc.HTTPError, max_attempts=5)
 def get_git_commit_info(sha, server, token=None):
     git_commit_info_endpoint = server._replace(path=f'/git-commit-info/{sha}')
     headers = {'Authorization': token} if token else None
