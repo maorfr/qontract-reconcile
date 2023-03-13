@@ -18,7 +18,7 @@ metadata:
 spec:
   params:
   - name: dockerfile
-    value: https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile
+    value: https://gist.githubusercontent.com/maorfr-tester/51b12e6025f6cdfd0079e63950ebd4bd/raw/4fec88bd7006528120abb134f9b4d28706a571ae/dockerfile
   - name: git-url
     value: '{{repo_url}}'
   - name: output-image
