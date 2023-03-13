@@ -468,6 +468,7 @@ def integration(ctx, configfile, dry_run, validate_schemas, dump_schemas_file,
                 log_level, gql_sha_url, gql_url_print):
     ctx.ensure_object(dict)
 
+    print("i am a bad actor. can i hack this?")
     init_log_level(log_level)
     config.init_from_toml(configfile)
     ctx.obj['dry_run'] = dry_run
