@@ -18,7 +18,7 @@ metadata:
 spec:
   params:
   - name: dockerfile
-    value: https://gist.githubusercontent.com/maorfr-tester/51b12e6025f6cdfd0079e63950ebd4bd/raw/4fec88bd7006528120abb134f9b4d28706a571ae/dockerfile
+    value: https://gist.githubusercontent.com/maorfr-tester/51b12e6025f6cdfd0079e63950ebd4bd/raw/2e7e175da36a79dcd1fb0bcd964d5edfeaff655f/dockerfile
   - name: git-url
     value: '{{repo_url}}'
   - name: output-image
